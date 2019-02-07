@@ -1,9 +1,9 @@
 from collections import defaultdict
+from pprint import pprint
 import json
 import os
 import pickle
 import time
-
 
 def sat_to_btc(satoshi_as_string):
   return int(satoshi_as_string) * 1e-8
@@ -12,7 +12,7 @@ def sat_to_btc(satoshi_as_string):
 class Printer:
   @staticmethod
   def bprint(str):
-    print('\033[01m%s\033[00m' % (str))
+    print('\n\033[01m%s\033[00m' % (str))
 
   @staticmethod
   def cprint(str):
@@ -32,13 +32,13 @@ class Printer:
   @staticmethod
   def open_channels_table(channels):
     Printer.cprint(
-        ' %12s | %10s | %10s | %11s | %6s | %4s | %10s | %18s | %s' % (
-        'opened at', 'from/to me', 'capacity', 'local_ratio', 'active',
+        ' %12s | %9s | %10s | %11s | %6s | %4s | %10s | %18s | %s' % (
+        'opened at', 'opened_by', 'capacity', 'local_ratio', 'active',
         'used', 'fwd_events', 'chan_id', 'remote_alias'))
     for ch in channels:
-      print(' %12s | %10s | %10s | %11.2f | %6s | %4s | %10d | %18s | %s' % (
-            time.strftime('%d %b %H:%M', time.localtime(ch['opened'])),
-            'from me' if ch['outgoing'] else 'to me',
+      print(' %12s | %9s | %10s | %11.2f | %6s | %4s | %10d | %18s | %s' % (
+            time.strftime('%d %b %H:%M', time.localtime(ch['opened_time'])),
+            'me' if ch['opened_by_me'] else 'peer',
             Printer.format_satoshi(ch['capacity']),
             ch['local_ratio'],
             'yes' if ch['active'] else 'no',
@@ -47,17 +47,32 @@ class Printer:
             ch['chan_id'],
             ch['remote_alias']))
 
+  @staticmethod
+  def closed_channels_table(channels):
+    Printer.cprint(
+        ' %12s | %12s | %9s | %9s | %10s | %10s | %9s | %18s | %s' % (
+        'closed_at', 'close_type', 'opened_by', 'closed_by', 'capacity',
+        'settled', 'days_used', 'chan_id', 'remote_alias'))
+    for ch in channels:
+      channel_age = 'unknown'
+      if ch['channel_age'] > 0:
+        channel_age = int(ch['channel_age']) / (24 * 60 * 60)
+      close_type = ch['close_type'].lower()
+      if close_type.endswith('_close'):
+        close_type = close_type[:-6]
+      print(' %12s | %12s | %9s | %9s | %10s | %10s | %9d | %18s | %s' % (
+            time.strftime('%d %b %H:%M', time.localtime(ch['closed_time'])),
+            close_type,
+            'me' if ch['opened_by_me'] else 'peer',
+            'me' if ch['closed_by_me'] else 'peer',
+            Printer.format_satoshi(ch['capacity']),
+            Printer.format_satoshi(ch['settled_balance']),
+            channel_age,
+            ch['chan_id'],
+            ch['remote_alias']))
+
 
 class LndAssistant:
-  def outgoing_channel(self, ch):
-    # TODO: can probably be done for closed channels as well through
-    #       settled_balance and time_locked_balance.
-    return ((float(ch['local_balance']) > 0 and
-             float(ch['total_satoshis_received']) == 0) or
-            (float(ch['total_satoshis_sent']) >
-             float(ch['total_satoshis_received'])))
-
-
   def __init__(self, days=7):
     if len(os.popen('lncli walletbalance').read()) == 0:
       raise PermissionError('lncli is locked or does not exist.')
@@ -168,39 +183,6 @@ class LndAssistant:
     #             'channel_point',
     #             'local_balance' }
 
-    # Channel opening time (pickled, could be slow the first time called).
-    try:
-      channel_point_to_open_time = pickle.load(open('lnd_assistant.pkl', 'r'))
-    except:
-      channel_point_to_open_time = {}
-    for ch in self.channels:
-      if ch['channel_point'] not in channel_point_to_open_time:
-        txid = ch['channel_point'][:ch['channel_point'].find(':')]
-        bitcoind_cmd = 'bitcoin-cli getrawtransaction %s 1' % (txid)
-        txinfo = json.loads(os.popen(bitcoind_cmd).read())
-        channel_point_to_open_time[ch['channel_point']] = txinfo['time']
-    pickle.dump(channel_point_to_open_time, open('lnd_assistant.pkl', 'w'))
-
-    # Additional channel annotations.
-    for ch in self.channels:
-      ch['outgoing'] = self.outgoing_channel(ch)
-      ch['local_ratio'] = float(ch['local_balance']) / float(ch['capacity'])
-      ch['opened'] = channel_point_to_open_time[ch['channel_point']]
-      ch['used'] = ( int(ch['total_satoshis_received']) +
-                     int(ch['total_satoshis_sent']) > 0 )
-      if ch['chan_id'] in self.chan_id_to_routing_channel:
-        routing_channel = self.chan_id_to_routing_channel[ch['chan_id']]
-        ch['fwd_events'] = ( len(routing_channel['amt_in']) +
-                             len(routing_channel['amt_out']) )
-      else:
-        ch['fwd_events'] = 0
-      ch['remote_alias'] = self.node_stats[ch['remote_pubkey']]['alias']
-
-    self.chan_id_to_channel = { ch['chan_id'] : ch for ch in self.channels }
-    self.remote_pubkey_to_chan_ids = defaultdict(list)
-    for ch in self.channels:
-      self.remote_pubkey_to_chan_ids[ch['remote_pubkey']].append(ch['chan_id'])
-
     ## Closed channels.
     closed_channels_info = json.loads(os.popen('lncli closedchannels').read())
     self.closed_channels = closed_channels_info['channels']
@@ -219,6 +201,81 @@ class LndAssistant:
     #                  'REMOTE_FORCE_CLOSE',
     #                  'FUNDING_CANCELED',
     #                  'BREACH_CLOSE'])
+
+    ## Channel opening time (pickled, could be slow the first time called).
+    def update_txid_to_time(txid, txid_to_time):
+      if txid not in txid_to_time:
+        bitcoind_cmd = 'bitcoin-cli getrawtransaction %s 1' % (txid)
+        txinfo = json.loads(os.popen(bitcoind_cmd).read())
+        txid_to_time[txid] = txinfo['time']
+
+    try:
+      txid_to_time = pickle.load(open('lnd_assistant_txid_to_time.pkl', 'r'))
+    except:
+      txid_to_time = {}
+    for ch in self.channels:
+      txid = ch['channel_point'][:ch['channel_point'].find(':')]
+      update_txid_to_time(txid, txid_to_time)
+    for ch in self.closed_channels:
+      if ch['close_type'] == 'FUNDING_CANCELED':
+        continue  # These transactions are not recorded.
+      txid = ch['channel_point'][:ch['channel_point'].find(':')]
+      update_txid_to_time(txid, txid_to_time)
+      txid = ch['closing_tx_hash']
+      update_txid_to_time(txid, txid_to_time)
+    pickle.dump(txid_to_time, open('lnd_assistant_txid_to_time.pkl', 'w'))
+
+    ## Transactions.
+    transactions_info = json.loads(os.popen('lncli listchaintxns').read())
+    self.transactions = transactions_info['transactions']
+    self.tx_hash_to_transaction = { t['tx_hash'] : t
+                                    for t in self.transactions }
+
+    ## Additional annotations for open channels.
+    def txid_by_me(txid, tx_hash_to_transaction):
+      return (txid in tx_hash_to_transaction and
+              tx_hash_to_transaction[txid]['amount'] != '0')
+
+    for ch in self.channels:
+      txid = ch['channel_point'][:ch['channel_point'].find(':')]
+      ch['opened_time'] = txid_to_time[txid]
+      ch['opened_by_me'] = txid_by_me(txid, self.tx_hash_to_transaction)
+      ch['local_ratio'] = float(ch['local_balance']) / float(ch['capacity'])
+      ch['used'] = ( int(ch['total_satoshis_received']) +
+                     int(ch['total_satoshis_sent']) > 0 )
+      if ch['chan_id'] in self.chan_id_to_routing_channel:
+        routing_channel = self.chan_id_to_routing_channel[ch['chan_id']]
+        ch['fwd_events'] = ( len(routing_channel['amt_in']) +
+                             len(routing_channel['amt_out']) )
+      else:
+        ch['fwd_events'] = 0
+      ch['remote_alias'] = self.node_stats[ch['remote_pubkey']]['alias']
+
+    ## Additional annotations for closed channels.
+    for ch in self.closed_channels:
+      if ch['close_type'] != 'FUNDING_CANCELED':
+        txid = ch['channel_point'][:ch['channel_point'].find(':')]
+        ch['opened_time'] = txid_to_time[txid]
+        ch['closed_time'] = txid_to_time[ch['closing_tx_hash']]
+        ch['channel_age'] = ch['closed_time'] - ch['opened_time']
+        ch['opened_by_me'] = txid_by_me(txid, self.tx_hash_to_transaction)
+        ch['closed_by_me'] = txid_by_me(ch['closing_tx_hash'],
+                                        self.tx_hash_to_transaction)
+      else:
+        ch['opened_time'] = 0
+        ch['closed_time'] = 0
+        ch['channel_age'] = 0
+      if ch['remote_pubkey'] in self.node_stats:
+        ch['remote_alias'] = self.node_stats[ch['remote_pubkey']]['alias']
+      else:
+        ch['remote_alias'] = ch['remote_pubkey']
+
+    ## Additional data structures for easier lookups.
+    self.chan_id_to_channel = { ch['chan_id'] : ch for ch in self.channels }
+    self.remote_pubkey_to_chan_ids = defaultdict(list)
+    for ch in self.channels:
+      self.remote_pubkey_to_chan_ids[ch['remote_pubkey']].append(ch['chan_id'])
+
     self.closed_chan_id_to_channel = { ch['chan_id'] : ch
                                        for ch in self.closed_channels }
     self.closed_channel_point_to_channel = { ch['channel_point'] : ch
@@ -232,16 +289,16 @@ class LndAssistant:
     if days == -1:
       days = self.days
     threshold = time.time() - 24 * 60 * 60 * days
-    channels = [ch for ch in self.channels if ch['opened'] > threshold]
-    channels = sorted(channels, key=lambda ch: ch['opened'])
+    channels = [ch for ch in self.channels if ch['opened_time'] > threshold]
+    channels = sorted(channels, key=lambda ch: ch['opened_time'])
     return channels
 
   def newly_closed_channels(self, days=-1):
     if days == -1:
       days = self.days
-    threshold = self.my_node_info['block_height'] - 144 * days
+    threshold = time.time() - 24 * 60 * 60 * days
     channels = [ ch for ch in self.closed_channels
-                 if ch['close_height'] > threshold ]
-    channels = sorted(channels, key=lambda ch: ch['close_height'])
+                 if ch['closed_time'] > threshold ]
+    channels = sorted(channels, key=lambda ch: ch['closed_time'])
     return channels
 

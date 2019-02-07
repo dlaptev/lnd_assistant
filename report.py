@@ -13,12 +13,12 @@ def print_my_node_info(lnda):
   Printer.bprint(' == Channels')
   # There are multiple closed channels with chan_id = '0', ignore them.
   closed_channels = [ch for ch in lnda.closed_channels if ch['chan_id'] != '0']
-  outgoing_channels = [ch for ch in lnda.channels if ch['outgoing']]
-  print('  open:     %3d' % (len(lnda.channels)))
-  print('  active:   %3d' % (lnda.my_node_info['num_active_channels']))
-  print('  outgoing: %3d' % (len(outgoing_channels)))
-  print('  pending:  %3d' % (lnda.my_node_info['num_pending_channels']))
-  print('  closed:   %3d' % (len(closed_channels)))
+  channels_opened_by_me = [ch for ch in lnda.channels if ch['opened_by_me']]
+  print('  open:    %3d' % (len(lnda.channels)))
+  print('  active:  %3d' % (lnda.my_node_info['num_active_channels']))
+  print('  from me: %3d' % (len(channels_opened_by_me)))
+  print('  pending: %3d' % (lnda.my_node_info['num_pending_channels']))
+  print('  closed:  %3d' % (len(closed_channels)))
 
   Printer.bprint(' == Balance')
   local_balance = sum([ sat_to_btc(ch['local_balance'])
@@ -46,8 +46,7 @@ def print_opened_and_closed_channels(lnda, days, rows):
   Printer.bprint((' == Channels closed in the last %d days ' +
                   '(showing %d out of %d):') % (days, rows_closed,
                                                 len(closed_channels)))
-  for ch in closed_channels[-rows:]:
-    print('')
+  Printer.closed_channels_table(closed_channels[-rows:])
 
 
 if __name__ == '__main__':
