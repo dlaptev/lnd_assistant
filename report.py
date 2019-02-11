@@ -1,6 +1,7 @@
 from __future__ import print_function
 import argparse
-from lnd_assistant import LndAssistant, sat_to_btc, Printer
+from lnd_assistant import LndAssistant, sat_to_btc
+from lnd_assistant_printer import Printer
 
 
 def print_my_node_info(lnda):
@@ -50,9 +51,9 @@ def print_opened_and_closed_channels(lnda, days, rows):
 
 def print_routing_info(lnda, days, rows):
   Printer.bprint(' == Routing stats for the last %d days' % (days))
-  print('  routing events: %10d' % (len(lnda.fwd_events)))
+  print('  routing events: %d' % (len(lnda.fwd_events)))
   fees = sum([int(e['fee']) for e in lnda.fwd_events])
-  print('  fees collected: %10s satoshis' % (Printer.format_satoshi(fees)))
+  print('  fees collected: %s satoshis' % (Printer.format_satoshi(fees)))
   routing_channels = lnda.routing_channels(days)
   show_rows = len(routing_channels) if len(routing_channels) < rows else rows
   Printer.bprint((' == Routing channels (showing %d out of %d):') % (
