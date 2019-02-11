@@ -33,8 +33,8 @@ class Printer:
   def open_channels_table(channels):
     Printer.cprint(
         ' %12s | %9s | %10s | %11s | %6s | %4s | %10s | %18s | %s' % (
-        'opened at', 'opened_by', 'capacity', 'local_ratio', 'active',
-        'used', 'fwd_events', 'chan_id', 'remote_alias'))
+            'opened at', 'opened_by', 'capacity', 'local_ratio', 'active',
+            'used', 'fwd_events', 'chan_id', 'remote_alias'))
     for ch in channels:
       print(' %12s | %9s | %10s | %11.2f | %6s | %4s | %10d | %18s | %s' % (
             time.strftime('%d %b %H:%M', time.localtime(ch['opened_time'])),
@@ -50,9 +50,9 @@ class Printer:
   @staticmethod
   def closed_channels_table(channels):
     Printer.cprint(
-        ' %12s | %12s | %9s | %9s | %10s | %10s | %9s | %18s | %s' % (
-        'closed_at', 'close_type', 'opened_by', 'closed_by', 'capacity',
-        'settled', 'days_used', 'chan_id', 'remote_alias'))
+        ' %12s | %12s | %9s | %9s | %10s | %10s | %9s | %10s | %18s | %s' % (
+            'closed_at', 'close_type', 'opened_by', 'closed_by', 'capacity',
+            'settled', 'days_used', 'fwd_events', 'chan_id', 'remote_alias'))
     for ch in channels:
       channel_age = 'unknown'
       if ch['channel_age'] > 0:
@@ -60,16 +60,43 @@ class Printer:
       close_type = ch['close_type'].lower()
       if close_type.endswith('_close'):
         close_type = close_type[:-6]
-      print(' %12s | %12s | %9s | %9s | %10s | %10s | %9d | %18s | %s' % (
-            time.strftime('%d %b %H:%M', time.localtime(ch['closed_time'])),
-            close_type,
-            'me' if ch['opened_by_me'] else 'peer',
-            'me' if ch['closed_by_me'] else 'peer',
-            Printer.format_satoshi(ch['capacity']),
-            Printer.format_satoshi(ch['settled_balance']),
-            channel_age,
-            ch['chan_id'],
-            ch['remote_alias']))
+      print(
+          ' %12s | %12s | %9s | %9s | %10s | %10s | %9d | %10d | %18s | %s' % (
+              time.strftime('%d %b %H:%M', time.localtime(ch['closed_time'])),
+              close_type,
+              'me' if ch['opened_by_me'] else 'peer',
+              'me' if ch['closed_by_me'] else 'peer',
+              Printer.format_satoshi(ch['capacity']),
+              Printer.format_satoshi(ch['settled_balance']),
+              channel_age,
+              ch['fwd_events'],
+              ch['chan_id'],
+              ch['remote_alias']))
+
+  @staticmethod
+  def routing_channels_table(channels):
+    Printer.cprint(
+        ' %10s | %9s | %19s | %5s | %10s | %11s | %9s | %18s | %s' % (
+            'fwd_events', 'in/out', 'avg_amt in/out', 'fees', 'capacity',
+            'local_ratio', 'opened_by', 'chan_id', 'remote_alias'))
+    for ch in channels:
+      local_ratio_as_str = ch['local_ratio']
+      if type(ch['local_ratio']) == float:
+        local_ratio_as_str = '%.2f' % ch['local_ratio']
+      fwd_events_in_out = '%4d/%4d' % ( ch['fwd_events_in'],
+                                        ch['fwd_events_out'] )
+      amt_in_out = '%9s/%9s' % ( Printer.format_satoshi(ch['avg_amt_in']),
+                                 Printer.format_satoshi(ch['avg_amt_out']) )
+      print(' %10d | %9s | %19s | %5s | %10s | %11s | %9s | %18s | %s' % (
+          ch['fwd_events'],
+          fwd_events_in_out,
+          amt_in_out,
+          Printer.format_satoshi(ch['fees']),
+          Printer.format_satoshi(ch['capacity']),
+          local_ratio_as_str,
+          'me' if ch['opened_by_me'] else 'peer',
+          ch['chan_id'],
+          ch['remote_alias']))
 
 
 class LndAssistant:
@@ -144,19 +171,19 @@ class LndAssistant:
     #               'fee',
     #               'fee_msat',
     #               'timestamp' }
-    self.chan_id_to_routing_channel = {}
+    self.chan_id_to_chan_fwd_events = {}
     for event in self.fwd_events:
-      self.chan_id_to_routing_channel[event['chan_id_in']] = { 'amt_in': [],
+      self.chan_id_to_chan_fwd_events[event['chan_id_in']] = { 'amt_in': [],
           'amt_out': [], 'fee': [] }
-      self.chan_id_to_routing_channel[event['chan_id_out']] = { 'amt_in': [],
+      self.chan_id_to_chan_fwd_events[event['chan_id_out']] = { 'amt_in': [],
           'amt_out': [], 'fee': [] }
     for event in self.fwd_events:
-      self.chan_id_to_routing_channel[event['chan_id_in']]['amt_in'].append(
+      self.chan_id_to_chan_fwd_events[event['chan_id_in']]['amt_in'].append(
           int(event['amt_in']))
-      self.chan_id_to_routing_channel[event['chan_id_out']]['amt_out'].append(
+      self.chan_id_to_chan_fwd_events[event['chan_id_out']]['amt_out'].append(
           int(event['amt_out']))
       # TODO: maybe use float(event['fee_msat']) / 1000.0
-      self.chan_id_to_routing_channel[event['chan_id_out']]['fee'].append(
+      self.chan_id_to_chan_fwd_events[event['chan_id_out']]['fee'].append(
           int(event['fee']))
 
     ## Open channels.
@@ -243,10 +270,10 @@ class LndAssistant:
       ch['local_ratio'] = float(ch['local_balance']) / float(ch['capacity'])
       ch['used'] = ( int(ch['total_satoshis_received']) +
                      int(ch['total_satoshis_sent']) > 0 )
-      if ch['chan_id'] in self.chan_id_to_routing_channel:
-        routing_channel = self.chan_id_to_routing_channel[ch['chan_id']]
-        ch['fwd_events'] = ( len(routing_channel['amt_in']) +
-                             len(routing_channel['amt_out']) )
+      if ch['chan_id'] in self.chan_id_to_chan_fwd_events:
+        chan_fwd_events = self.chan_id_to_chan_fwd_events[ch['chan_id']]
+        ch['fwd_events'] = ( len(chan_fwd_events['amt_in']) +
+                             len(chan_fwd_events['amt_out']) )
       else:
         ch['fwd_events'] = 0
       ch['remote_alias'] = self.node_stats[ch['remote_pubkey']]['alias']
@@ -265,10 +292,16 @@ class LndAssistant:
         ch['opened_time'] = 0
         ch['closed_time'] = 0
         ch['channel_age'] = 0
+      if ch['chan_id'] in self.chan_id_to_chan_fwd_events:
+        chan_fwd_events = self.chan_id_to_chan_fwd_events[ch['chan_id']]
+        ch['fwd_events'] = ( len(chan_fwd_events['amt_in']) +
+                             len(chan_fwd_events['amt_out']) )
+      else:
+        ch['fwd_events'] = 0
       if ch['remote_pubkey'] in self.node_stats:
         ch['remote_alias'] = self.node_stats[ch['remote_pubkey']]['alias']
       else:
-        ch['remote_alias'] = ch['remote_pubkey']
+        ch['remote_alias'] = ch['remote_pubkey'][:30] + '...'
 
     ## Additional data structures for easier lookups.
     self.chan_id_to_channel = { ch['chan_id'] : ch for ch in self.channels }
@@ -300,5 +333,37 @@ class LndAssistant:
     channels = [ ch for ch in self.closed_channels
                  if ch['closed_time'] > threshold ]
     channels = sorted(channels, key=lambda ch: ch['closed_time'])
+    return channels
+
+  def routing_channels(self, days=-1):
+    if days == -1:
+      days = self.days
+    channels = []
+    for chan_id in self.chan_id_to_chan_fwd_events.keys():
+      if chan_id in self.chan_id_to_channel:
+        ch = self.chan_id_to_channel[chan_id]
+      elif chan_id in self.closed_chan_id_to_channel:
+        ch = self.closed_chan_id_to_channel[chan_id]
+        ch['local_ratio'] = '? (closed)'
+      else:
+        ch = { 'chan_id': chan_id, 'remote_alias': '?', 'opened_by': '?',
+               'capacity': '?', 'local_ratio': '?' }
+      chan_fwd_events = self.chan_id_to_chan_fwd_events[chan_id]
+      ch['fwd_events_in'] = len(chan_fwd_events['amt_in'])
+      ch['fwd_events_out'] = len(chan_fwd_events['amt_out'])
+      ch['fwd_events'] = ch['fwd_events_in'] + ch['fwd_events_out']
+      if ch['fwd_events_in'] > 0:
+        ch['avg_amt_in'] = int( sum(chan_fwd_events['amt_in']) /
+                                len(chan_fwd_events['amt_in']) )
+      else:
+        ch['avg_amt_in'] = 0
+      if ch['fwd_events_out'] > 0:
+        ch['avg_amt_out'] = int( sum(chan_fwd_events['amt_out']) /
+                                 len(chan_fwd_events['amt_out']) )
+      else:
+        ch['avg_amt_out'] = 0
+      ch['fees'] = sum(chan_fwd_events['fee'])
+      channels.append(ch)
+    channels = sorted(channels, key=lambda ch: -ch['fwd_events'])
     return channels
 

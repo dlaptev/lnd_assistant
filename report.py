@@ -48,6 +48,17 @@ def print_opened_and_closed_channels(lnda, days, rows):
                                                 len(closed_channels)))
   Printer.closed_channels_table(closed_channels[-rows:])
 
+def print_routing_info(lnda, days, rows):
+  Printer.bprint(' == Routing stats for the last %d days' % (days))
+  print('  routing events: %10d' % (len(lnda.fwd_events)))
+  fees = sum([int(e['fee']) for e in lnda.fwd_events])
+  print('  fees collected: %10s satoshis' % (Printer.format_satoshi(fees)))
+  routing_channels = lnda.routing_channels(days)
+  show_rows = len(routing_channels) if len(routing_channels) < rows else rows
+  Printer.bprint((' == Routing channels (showing %d out of %d):') % (
+                  show_rows, len(routing_channels)))
+  Printer.routing_channels_table(routing_channels[:rows])
+
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(
@@ -65,6 +76,5 @@ if __name__ == '__main__':
   lnda = LndAssistant(days=args.days)
   print_my_node_info(lnda)
   print_opened_and_closed_channels(lnda, args.days, args.rows)
-  ## New channels in the last days.
-  ## Channels closed in the last days.
-  ## Forwarding stats.
+  print_routing_info(lnda, args.days, args.rows)
+  print('')
