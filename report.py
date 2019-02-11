@@ -1,7 +1,7 @@
 from __future__ import print_function
 import argparse
 from lnd_assistant import LndAssistant, sat_to_btc
-from lnd_assistant_printer import Printer
+import lnd_assistant_printer as Printer
 
 
 def print_my_node_info(lnda):
@@ -43,11 +43,11 @@ def print_opened_and_closed_channels(lnda, days, rows):
   Printer.bprint((' == Channels opened in the last %d days ' +
                   '(showing %d out of %d):') % (days, rows_opened,
                                                 len(opened_channels)))
-  Printer.open_channels_table(opened_channels[-rows:])
+  Printer.open_channels_table(opened_channels[:rows])
   Printer.bprint((' == Channels closed in the last %d days ' +
                   '(showing %d out of %d):') % (days, rows_closed,
                                                 len(closed_channels)))
-  Printer.closed_channels_table(closed_channels[-rows:])
+  Printer.closed_channels_table(closed_channels[:rows])
 
 def print_routing_info(lnda, days, rows):
   Printer.bprint(' == Routing stats for the last %d days' % (days))
@@ -56,9 +56,24 @@ def print_routing_info(lnda, days, rows):
   print('  fees collected: %s satoshis' % (Printer.format_satoshi(fees)))
   routing_channels = lnda.routing_channels(days)
   show_rows = len(routing_channels) if len(routing_channels) < rows else rows
-  Printer.bprint((' == Routing channels (showing %d out of %d):') % (
-                  show_rows, len(routing_channels)))
+  Printer.bprint(' == Routing channels (showing %d out of %d):' % (
+                 show_rows, len(routing_channels)))
   Printer.routing_channels_table(routing_channels[:rows])
+
+def print_peers_tips(lnda, rows):
+  peers = lnda.peers_with_multiple_channels()
+  show_rows = len(peers) if len(peers) < rows / 2 else rows / 2
+  Printer.bprint(' == Peers with multiple channels (showing %d out of %d):' % (
+                 show_rows, len(peers)))
+  print('You can close some of these channels to free up on-chain capacity.')
+  Printer.peers_with_multiple_channels_table(peers[:rows / 2])
+  peers = lnda.peers_to_rebalance()
+  show_rows = len(peers) if len(peers) < rows else rows
+  Printer.bprint(' == Candidate peers to rebalance (showing %d out of %d):' % (
+                 show_rows, len(peers)))
+  print('These are the peers that used your channels to receive payments ' +
+        'and almost exhausted the inbound capacity of your channels.')
+  Printer.peers_to_rebalance_table(peers[:rows])
 
 
 if __name__ == '__main__':
@@ -78,4 +93,5 @@ if __name__ == '__main__':
   print_my_node_info(lnda)
   print_opened_and_closed_channels(lnda, args.days, args.rows)
   print_routing_info(lnda, args.days, args.rows)
+  print_peers_tips(lnda, args.rows)
   print('')

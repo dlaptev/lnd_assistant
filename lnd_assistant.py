@@ -233,7 +233,7 @@ class LndAssistant:
       days = self.days
     threshold = time.time() - 24 * 60 * 60 * days
     channels = [ch for ch in self.channels if ch['opened_time'] > threshold]
-    channels = sorted(channels, key=lambda ch: ch['opened_time'])
+    channels = sorted(channels, key=lambda ch: ch['opened_time'], reverse=True)
     return channels
 
   def newly_closed_channels(self, days=-1):
@@ -242,7 +242,7 @@ class LndAssistant:
     threshold = time.time() - 24 * 60 * 60 * days
     channels = [ ch for ch in self.closed_channels
                  if ch['closed_time'] > threshold ]
-    channels = sorted(channels, key=lambda ch: ch['closed_time'])
+    channels = sorted(channels, key=lambda ch: ch['closed_time'], reverse=True)
     return channels
 
   def routing_channels(self, days=-1):
@@ -256,7 +256,7 @@ class LndAssistant:
         ch = self.closed_chan_id_to_channel[chan_id]
         ch['local_ratio'] = '? (closed)'
       else:
-        ch = { 'chan_id': chan_id, 'remote_alias': '?', 'opened_by': '?',
+        ch = { 'chan_id': chan_id, 'remote_alias': '?', 'opened_by_me': '?',
                'capacity': '?', 'local_ratio': '?' }
       chan_fwd_events = self.chan_id_to_chan_fwd_events[chan_id]
       ch['fwd_events_in'] = len(chan_fwd_events['amt_in'])
@@ -274,6 +274,44 @@ class LndAssistant:
         ch['avg_amt_out'] = 0
       ch['fees'] = sum(chan_fwd_events['fee'])
       channels.append(ch)
-    channels = sorted(channels, key=lambda ch: -ch['fwd_events'])
+    channels = sorted(channels, key=lambda ch: ch['fwd_events'], reverse=True)
     return channels
 
+  def peers_with_multiple_channels(self):
+    peers = []
+    for pubkey in self.remote_pubkey_to_chan_ids.keys():
+      if len(self.remote_pubkey_to_chan_ids[pubkey]) > 1:
+        channels = []
+        for chan_id in self.remote_pubkey_to_chan_ids[pubkey]:
+          channels.append(self.chan_id_to_channel[chan_id])
+        channels = sorted(channels, key=lambda ch: float(ch['capacity']),
+                          reverse=True)
+        peers.append(channels)
+    peers = sorted(peers, key=lambda x: len(x), reverse=True)
+    return peers
+
+  def peers_to_rebalance(self):
+    peers = []
+    for pubkey in self.remote_pubkey_to_chan_ids.keys():
+      total_capacity = 0
+      total_local_balance = 0
+      total_satoshis_sent = 0
+      total_satoshis_received = 0
+      for chan_id in self.remote_pubkey_to_chan_ids[pubkey]:
+        ch = self.chan_id_to_channel[chan_id]
+        total_capacity += int(ch['capacity'])
+        total_local_balance += int(ch['local_balance'])
+        total_satoshis_sent += int(ch['total_satoshis_sent'])
+        total_satoshis_received += int(ch['total_satoshis_received'])
+      if total_satoshis_sent > 0 and total_local_balance < total_capacity / 3:
+        peers.append({
+            'remote_pubkey': pubkey,
+            'alias': self.node_stats[pubkey]['alias'],
+            'n_channels': len(self.remote_pubkey_to_chan_ids[pubkey]),
+            'total_capacity': total_capacity,
+            'total_local_ratio': float(total_local_balance) / total_capacity,
+            'total_satoshis_sent': total_satoshis_sent,
+            'total_satoshis_received': total_satoshis_received,
+            })
+    peers = sorted(peers, key=lambda p: p['total_local_ratio'])
+    return peers
