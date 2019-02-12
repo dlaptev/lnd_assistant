@@ -81,7 +81,12 @@ def print_tips_on_channels_to_close(lnda, days, rows):
         'used. To free up on-chain balance - close channels with high ' \
         'local_ratio.')
   Printer.peers_with_multiple_channels_table(peers[:rows / 2])
-  # TODO: the list of old yet unused channels.
+  channels = lnda.old_unused_channels()
+  show_rows = len(channels) if len(channels) < rows else rows
+  Printer.bprint(' == Old unused channels (showing %d out of %d):' % (
+                 show_rows, len(channels)))
+  print('// You can close some of these unused channels.')
+  Printer.old_unused_channels_table(channels[:rows])
 
 
 if __name__ == '__main__':

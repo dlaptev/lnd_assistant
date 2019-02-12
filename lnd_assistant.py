@@ -245,6 +245,11 @@ class LndAssistant:
     channels = sorted(channels, key=lambda ch: ch['closed_time'], reverse=True)
     return channels
 
+  def old_unused_channels(self):
+    channels = [ ch for ch in self.channels if not ch['used'] ]
+    channels = sorted(channels, key=lambda ch: ch['opened_time'])
+    return channels
+
   def routing_channels(self, days=-1):
     if days == -1:
       days = self.days

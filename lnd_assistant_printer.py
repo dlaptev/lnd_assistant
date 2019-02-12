@@ -83,7 +83,7 @@ def routing_channels_table(channels):
 def peers_with_multiple_channels_table(peers):
   cprint(' %22s | %7s | %9s | %10s | %11s | %6s | %4s | %10s | %s' % (
          'remote_alias', 'number', 'opened_by', 'capacity', 'local_ratio',
-         'active', 'used', 'fwd_events', 'funding_tx'))
+         'active', 'used', 'fwd_events', 'funding_tx and output_number'))
   for peer_channels in peers:
     n = len(peer_channels)
     for i in range(n):
@@ -97,7 +97,7 @@ def peers_with_multiple_channels_table(peers):
             'yes' if ch['active'] else 'no',
             'yes' if ch['used'] else 'no',
             ch['fwd_events'],
-            ch['channel_point'][:-2]))
+            ' '.join(ch['channel_point'].split(':'))))
 
 def peers_exhausting_inbound_capacity_table(peers):
   cprint(' %8s | %14s | %11s | %10s | %12s | %10s | %s (%s)' % (
@@ -113,3 +113,16 @@ def peers_exhausting_inbound_capacity_table(peers):
           peer['fwd_events'],
           peer['remote_pubkey'],
           peer['alias']))
+
+def old_unused_channels_table(channels):
+  cprint(' %12s | %9s | %10s | %6s | %22s | %s' % (
+         'opened at', 'opened_by', 'capacity', 'active', 'alias',
+         'funding_tx and output_number'))
+  for ch in channels:
+    print(' %12s | %9s | %10s | %6s | %22s | %s' % (
+          time.strftime('%d %b %H:%M', time.localtime(ch['opened_time'])),
+          'me' if ch['opened_by_me'] else 'peer',
+          format_satoshi(ch['capacity']),
+          'yes' if ch['active'] else 'no',
+          ch['remote_alias'][:22],
+          ' '.join(ch['channel_point'].split(':'))))
