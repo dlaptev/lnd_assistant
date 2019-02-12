@@ -99,16 +99,17 @@ def peers_with_multiple_channels_table(peers):
             ch['fwd_events'],
             ch['channel_point'][:-2]))
 
-def peers_to_rebalance_table(peers):
-  cprint(' %8s | %14s | %11s | %10s | %12s | %s (%s)' % (
+def peers_exhausting_inbound_capacity_table(peers):
+  cprint(' %8s | %14s | %11s | %10s | %12s | %10s | %s (%s)' % (
          'channels', 'total_capacity', 'local_ratio', 'sat_sent',
-         'sat_received', 'remote_pubkey', 'alias'))
+         'sat_received', 'fwd_events', 'remote_pubkey', 'alias'))
   for peer in peers:
-    print(' %8d | %14s | %11.2f | %10s | %12s | %s (%s)' % (
+    print(' %8d | %14s | %11.2f | %10s | %12s | %10d | %s (%s)' % (
           peer['n_channels'],
           format_satoshi(peer['total_capacity']),
           peer['total_local_ratio'],
           format_satoshi(peer['total_satoshis_sent']),
           format_satoshi(peer['total_satoshis_received']),
+          peer['fwd_events'],
           peer['remote_pubkey'],
           peer['alias']))

@@ -290,19 +290,21 @@ class LndAssistant:
     peers = sorted(peers, key=lambda x: len(x), reverse=True)
     return peers
 
-  def peers_to_rebalance(self):
+  def peers_exhausting_inbound_capacity(self):
     peers = []
     for pubkey in self.remote_pubkey_to_chan_ids.keys():
       total_capacity = 0
       total_local_balance = 0
       total_satoshis_sent = 0
       total_satoshis_received = 0
+      fwd_events = 0
       for chan_id in self.remote_pubkey_to_chan_ids[pubkey]:
         ch = self.chan_id_to_channel[chan_id]
         total_capacity += int(ch['capacity'])
         total_local_balance += int(ch['local_balance'])
         total_satoshis_sent += int(ch['total_satoshis_sent'])
         total_satoshis_received += int(ch['total_satoshis_received'])
+        fwd_events += int(ch['fwd_events'])
       if total_satoshis_sent > 0 and total_local_balance < total_capacity / 3:
         peers.append({
             'remote_pubkey': pubkey,
@@ -312,6 +314,7 @@ class LndAssistant:
             'total_local_ratio': float(total_local_balance) / total_capacity,
             'total_satoshis_sent': total_satoshis_sent,
             'total_satoshis_received': total_satoshis_received,
+            'fwd_events': fwd_events,
             })
     peers = sorted(peers, key=lambda p: p['total_local_ratio'])
     return peers

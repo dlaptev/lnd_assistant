@@ -60,20 +60,28 @@ def print_routing_info(lnda, days, rows):
                  show_rows, len(routing_channels)))
   Printer.routing_channels_table(routing_channels[:rows])
 
-def print_peers_tips(lnda, rows):
+def print_tips_on_channels_to_open(lnda, days, rows):
+  peers = lnda.peers_exhausting_inbound_capacity()
+  show_rows = len(peers) if len(peers) < rows else rows
+  Printer.bprint(' == Candidate peers to rebalance (showing %d out of %d):' % (
+                 show_rows, len(peers)))
+  print('// These are the peers that received payments through your node and ' \
+        'almost exhausted the inbound capacity of open channels. If you ' \
+        'think these peers will further receive payments through your node - ' \
+        'you can open additional channels to them.')
+  Printer.peers_exhausting_inbound_capacity_table(peers[:rows])
+  # TODO: the list of closed channels that were actively used for routing.
+
+def print_tips_on_channels_to_close(lnda, days, rows):
   peers = lnda.peers_with_multiple_channels()
   show_rows = len(peers) if len(peers) < rows / 2 else rows / 2
   Printer.bprint(' == Peers with multiple channels (showing %d out of %d):' % (
                  show_rows, len(peers)))
-  print('You can close some of these channels to free up on-chain capacity.')
+  print('// You can close some of these redundant channels that are rarely ' \
+        'used. To free up on-chain balance - close channels with high ' \
+        'local_ratio.')
   Printer.peers_with_multiple_channels_table(peers[:rows / 2])
-  peers = lnda.peers_to_rebalance()
-  show_rows = len(peers) if len(peers) < rows else rows
-  Printer.bprint(' == Candidate peers to rebalance (showing %d out of %d):' % (
-                 show_rows, len(peers)))
-  print('These are the peers that used your channels to receive payments ' +
-        'and almost exhausted the inbound capacity of your channels.')
-  Printer.peers_to_rebalance_table(peers[:rows])
+  # TODO: the list of old yet unused channels.
 
 
 if __name__ == '__main__':
@@ -93,5 +101,6 @@ if __name__ == '__main__':
   print_my_node_info(lnda)
   print_opened_and_closed_channels(lnda, args.days, args.rows)
   print_routing_info(lnda, args.days, args.rows)
-  print_peers_tips(lnda, args.rows)
+  print_tips_on_channels_to_open(lnda, args.days, args.rows)
+  print_tips_on_channels_to_close(lnda, args.days, args.rows)
   print('')
