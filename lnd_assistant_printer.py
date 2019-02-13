@@ -1,6 +1,4 @@
-from pprint import pprint
 import time
-
 
 def bprint(str):
   print('\n\033[01m%s\033[00m' % (str))
@@ -163,3 +161,17 @@ def old_unused_channels_table(channels):
           'yes' if ch['active'] else 'no',
           ch['remote_alias'][:22],
           ' '.join(ch['channel_point'].split(':'))))
+
+def non_direct_peers_with_most_channels_table(peers):
+  cprint(' %10s | %10s | %66s | %20s | %s' % (
+         'channels', 'capacity', 'pubkey', 'address', 'alias'))
+  for peer in peers:
+    addr = 'unknown'
+    if len(peer['addresses']) and 'addr' in peer['addresses'][0]:
+      addr = peer['addresses'][0]['addr']
+    print(' %10d | %10.5f | %66s | %20s | %s' % (
+          peer['channels'],
+          peer['capacity'],
+          peer['pubkey'],
+          addr,
+          peer['alias']))

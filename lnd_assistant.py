@@ -317,3 +317,18 @@ class LndAssistant:
         ch['other_channels'] = len(
             self.remote_pubkey_to_chan_ids[ch['remote_pubkey']])
     return sorted(channels, key=lambda ch: ch['fwd_events'], reverse=True)
+
+  def non_direct_peers_with_most_channels(self, rows):
+    print('non_direct_peers_with_most_channels')
+    sorted_pubkeys = sorted(self.node_stats.keys(),
+        key=lambda pubkey: self.node_stats[pubkey]['channels'],
+        reverse=True)
+    peers = []
+    for pubkey in sorted_pubkeys:
+      if pubkey not in self.remote_pubkey_to_chan_ids:
+        node = self.node_stats[pubkey]
+        node['pubkey'] = pubkey
+        peers.append(node)
+      if len(peers) == rows:
+        break
+    return peers

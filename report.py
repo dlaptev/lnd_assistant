@@ -81,10 +81,18 @@ def print_tips_on_channels_to_open(lnda, rows):
   Printer.bprint(' == Closed routing channels (showing %d out of %d):' % (
                  show_rows, len(channels)))
   print('// If you think these channels were closed by accident - you can ' \
-        'try to reopen channels to these peers (you may already have other ' \
-        'channels to these peers).')
+        'try to reopen channels to these peers (note that you may already ' \
+        'have other channels to these peers).')
   Printer.closed_routing_channels_table(channels[:rows])
-  # TODO: the list of peers with high number of channels.
+  peers = lnda.non_direct_peers_with_most_channels(rows)
+  Printer.bprint(' == Non-direct peers with the most channels (top %d):' % (
+                 len(peers)))
+  print('// The list of nodes with the largest number of channels with which ' \
+        'your node has no channels. It is not always a good idea to open ' \
+        'channels to these nodes, but it could help to increase your ability ' \
+        'to send payments.')
+  # TODO: also compute and print average fees for a peer.
+  Printer.non_direct_peers_with_most_channels_table(peers)
 
 
 def print_tips_on_channels_to_close(lnda, rows):
