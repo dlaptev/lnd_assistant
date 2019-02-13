@@ -42,7 +42,7 @@ def print_routing_info(lnda, days, rows):
         Printer.format_satoshi(amt_forwarded), sat_to_btc(amt_forwarded)))
   fees = sum([int(e['fee']) for e in lnda.fwd_events])
   print('  fees collected: %s satoshis' % (Printer.format_satoshi(fees)))
-  routing_channels = lnda.routing_channels(days)
+  routing_channels = lnda.routing_channels()
   show_rows = len(routing_channels) if len(routing_channels) < rows else rows
   Printer.bprint(' == Routing channels (showing %d out of %d):' % (
                  show_rows, len(routing_channels)))
@@ -76,7 +76,14 @@ def print_tips_on_channels_to_open(lnda, rows):
         'think these peers will further receive payments through your node - ' \
         'you can open additional channels to them.')
   Printer.peers_exhausting_inbound_capacity_table(peers[:rows])
-  # TODO: the list of closed channels that were actively used for routing.
+  channels = lnda.closed_routing_channels()
+  show_rows = len(channels) if len(channels) < rows else rows
+  Printer.bprint(' == Closed routing channels (showing %d out of %d):' % (
+                 show_rows, len(channels)))
+  print('// If you think these channels were closed by accident - you can ' \
+        'try to reopen channels to these peers (you may already have other ' \
+        'channels to these peers).')
+  Printer.closed_routing_channels_table(channels[:rows])
   # TODO: the list of peers with high number of channels.
 
 

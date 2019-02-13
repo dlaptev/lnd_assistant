@@ -235,9 +235,7 @@ class LndAssistant:
     return channels
 
 
-  def routing_channels(self, days=-1):
-    if days == -1:
-      days = self.days
+  def routing_channels(self):
     channels = []
     for chan_id in self.chan_id_to_chan_fwd_events.keys():
       if chan_id in self.chan_id_to_channel:
@@ -310,3 +308,12 @@ class LndAssistant:
             })
     peers = sorted(peers, key=lambda p: p['total_local_ratio'])
     return peers
+
+  def closed_routing_channels(self):
+    channels = [ch for ch in self.closed_channels if ch['fwd_events'] > 0]
+    for ch in channels:
+      ch['other_channels'] = 0
+      if ch['remote_pubkey'] in self.remote_pubkey_to_chan_ids:
+        ch['other_channels'] = len(
+            self.remote_pubkey_to_chan_ids[ch['remote_pubkey']])
+    return sorted(channels, key=lambda ch: ch['fwd_events'], reverse=True)

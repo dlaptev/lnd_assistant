@@ -5,8 +5,10 @@ import time
 def bprint(str):
   print('\n\033[01m%s\033[00m' % (str))
 
+
 def cprint(str):
   print('\033[96m%s\033[00m' % (str))
+
 
 def format_satoshi(satoshi_as_string):
   if type(satoshi_as_string) == int:
@@ -17,6 +19,7 @@ def format_satoshi(satoshi_as_string):
     if i % 3 == 0 and i != len(satoshi_as_string):
       temp.append('\'')
   return ''.join(temp[::-1])
+
 
 def open_channels_table(channels):
   cprint(' %12s | %9s | %10s | %11s | %6s | %4s | %10s | %18s | %s' % (
@@ -33,6 +36,7 @@ def open_channels_table(channels):
           ch['fwd_events'],
           ch['chan_id'],
           ch['remote_alias']))
+
 
 def closed_channels_table(channels):
   cprint(' %12s | %12s | %9s | %9s | %10s | %10s | %9s | %10s | %18s | %s' % (
@@ -57,6 +61,36 @@ def closed_channels_table(channels):
           ch['chan_id'],
           ch['remote_alias']))
 
+
+def closed_routing_channels_table(channels):
+  cprint((' %12s | %12s | %9s | %9s | %10s | %10s | %9s | %10s | %14s | ' \
+          '%18s | %s (%s)') % (
+          'closed_at', 'close_type', 'opened_by', 'closed_by', 'capacity',
+          'settled', 'days_used', 'fwd_events', 'other_channels', 'chan_id',
+          'remote_pubkey', 'remote_alias'))
+  for ch in channels:
+    channel_age = 'unknown'
+    if ch['channel_age'] > 0:
+      channel_age = str(int(ch['channel_age']) / (24 * 60 * 60))
+    close_type = ch['close_type'].lower()
+    if close_type.endswith('_close'):
+      close_type = close_type[:-6]
+    print((' %12s | %12s | %9s | %9s | %10s | %10s | %9s | %10d | %14s | ' \
+           '%18s | %s (%s)') % (
+           time.strftime('%d %b %H:%M', time.localtime(ch['closed_time'])),
+           close_type,
+           'me' if ch['opened_by_me'] else 'peer',
+           'me' if ch['closed_by_me'] else 'peer',
+           format_satoshi(ch['capacity']),
+           format_satoshi(ch['settled_balance']),
+           channel_age,
+           ch['fwd_events'],
+           ch['other_channels'],
+           ch['chan_id'],
+           ch['remote_pubkey'],
+           ch['remote_alias']))
+
+
 def routing_channels_table(channels):
   cprint(' %10s | %9s | %19s | %5s | %10s | %11s | %9s | %18s | %s' % (
          'fwd_events', 'in/out', 'avg_amt in/out', 'fees', 'capacity',
@@ -80,6 +114,7 @@ def routing_channels_table(channels):
           ch['chan_id'],
           ch['remote_alias']))
 
+
 def peers_with_multiple_channels_table(peers):
   cprint(' %22s | %7s | %9s | %10s | %11s | %6s | %4s | %10s | %s' % (
          'remote_alias', 'number', 'opened_by', 'capacity', 'local_ratio',
@@ -99,6 +134,7 @@ def peers_with_multiple_channels_table(peers):
             ch['fwd_events'],
             ' '.join(ch['channel_point'].split(':'))))
 
+
 def peers_exhausting_inbound_capacity_table(peers):
   cprint(' %8s | %14s | %11s | %10s | %12s | %10s | %s (%s)' % (
          'channels', 'total_capacity', 'local_ratio', 'sat_sent',
@@ -113,6 +149,7 @@ def peers_exhausting_inbound_capacity_table(peers):
           peer['fwd_events'],
           peer['remote_pubkey'],
           peer['alias']))
+
 
 def old_unused_channels_table(channels):
   cprint(' %12s | %9s | %10s | %6s | %22s | %s' % (
