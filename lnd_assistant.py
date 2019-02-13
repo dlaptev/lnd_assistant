@@ -228,27 +228,12 @@ class LndAssistant:
       self.remote_pubkey_to_closed_channel_point[ch['remote_pubkey']].append(
           ch['channel_point'])
 
-  def newly_opened_channels(self, days=-1):
-    if days == -1:
-      days = self.days
-    threshold = time.time() - 24 * 60 * 60 * days
-    channels = [ch for ch in self.channels if ch['opened_time'] > threshold]
-    channels = sorted(channels, key=lambda ch: ch['opened_time'], reverse=True)
-    return channels
-
-  def newly_closed_channels(self, days=-1):
-    if days == -1:
-      days = self.days
-    threshold = time.time() - 24 * 60 * 60 * days
-    channels = [ ch for ch in self.closed_channels
-                 if ch['closed_time'] > threshold ]
-    channels = sorted(channels, key=lambda ch: ch['closed_time'], reverse=True)
-    return channels
 
   def old_unused_channels(self):
     channels = [ ch for ch in self.channels if not ch['used'] ]
     channels = sorted(channels, key=lambda ch: ch['opened_time'])
     return channels
+
 
   def routing_channels(self, days=-1):
     if days == -1:
@@ -282,6 +267,7 @@ class LndAssistant:
     channels = sorted(channels, key=lambda ch: ch['fwd_events'], reverse=True)
     return channels
 
+
   def peers_with_multiple_channels(self):
     peers = []
     for pubkey in self.remote_pubkey_to_chan_ids.keys():
@@ -294,6 +280,7 @@ class LndAssistant:
         peers.append(channels)
     peers = sorted(peers, key=lambda x: len(x), reverse=True)
     return peers
+
 
   def peers_exhausting_inbound_capacity(self):
     peers = []
