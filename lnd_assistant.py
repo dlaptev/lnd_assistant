@@ -196,8 +196,8 @@ class LndAssistant:
         ch['closed_time'] = txid_to_time[ch['closing_tx_hash']]
         ch['channel_age'] = ch['closed_time'] - ch['opened_time']
         ch['opened_by_me'] = txid_by_me(txid, self.tx_hash_to_transaction)
-        ch['closed_by_me'] = txid_by_me(ch['closing_tx_hash'],
-                                        self.tx_hash_to_transaction)
+        ch['closed_by_me'] = (ch['close_type'] == 'LOCAL_FORCE_CLOSE' or
+            txid_by_me(ch['closing_tx_hash'], self.tx_hash_to_transaction))
       else:
         ch['opened_time'] = 0
         ch['closed_time'] = 0
@@ -319,7 +319,6 @@ class LndAssistant:
     return sorted(channels, key=lambda ch: ch['fwd_events'], reverse=True)
 
   def non_direct_peers_with_most_channels(self, rows):
-    print('non_direct_peers_with_most_channels')
     sorted_pubkeys = sorted(self.node_stats.keys(),
         key=lambda pubkey: self.node_stats[pubkey]['channels'],
         reverse=True)
