@@ -97,13 +97,13 @@ def print_tips_on_channels_to_open(lnda, rows):
 
 def print_tips_on_channels_to_close(lnda, rows):
   peers = lnda.peers_with_multiple_channels()
-  show_rows = len(peers) if len(peers) < rows / 2 else rows / 2
+  show_rows = len(peers) if len(peers) < int(rows/2) else int(rows/2)
   Printer.bprint(' == Peers with multiple channels (showing %d out of %d):' % (
                  show_rows, len(peers)))
   print('// You can close some of these redundant channels that are rarely ' \
         'used. To free up on-chain balance - close the channels with high ' \
         'local_ratio.')
-  Printer.peers_with_multiple_channels_table(peers[:rows / 2])
+  Printer.peers_with_multiple_channels_table(peers[:int(rows/2)])
   channels = lnda.old_unused_channels()
   show_rows = len(channels) if len(channels) < rows else rows
   Printer.bprint(' == Oldest unused channels (showing %d out of %d):' % (

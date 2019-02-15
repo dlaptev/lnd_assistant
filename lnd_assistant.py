@@ -147,7 +147,7 @@ class LndAssistant:
         txid_to_time[txid] = txinfo['time']
 
     try:
-      txid_to_time = pickle.load(open('lnd_assistant_txid_to_time.pkl', 'r'))
+      txid_to_time = pickle.load(open('lnd_assistant_txid_to_time.pkl', 'rb'))
     except:
       txid_to_time = {}
     for ch in self.channels:
@@ -160,7 +160,7 @@ class LndAssistant:
       update_txid_to_time(txid, txid_to_time)
       txid = ch['closing_tx_hash']
       update_txid_to_time(txid, txid_to_time)
-    pickle.dump(txid_to_time, open('lnd_assistant_txid_to_time.pkl', 'w'))
+    pickle.dump(txid_to_time, open('lnd_assistant_txid_to_time.pkl', 'wb'))
 
     ## Transactions.
     transactions_info = json.loads(os.popen('lncli listchaintxns').read())
