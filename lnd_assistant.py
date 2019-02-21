@@ -10,6 +10,14 @@ def sat_to_btc(satoshi_as_string):
 
 
 class LndAssistant:
+  @staticmethod
+  def get_open_channels():
+    channels_info = json.loads(os.popen('lncli listchannels').read())
+    channels = channels_info['channels']
+    for ch in channels:
+      ch['local_ratio'] = float(ch['local_balance']) / float(ch['capacity'])
+    return channels
+
   def __init__(self, days=7):
     if len(os.popen('lncli walletbalance').read()) == 0:
       raise PermissionError('lncli is locked or does not exist.')
@@ -309,6 +317,7 @@ class LndAssistant:
     peers = sorted(peers, key=lambda p: p['total_local_ratio'])
     return peers
 
+
   def closed_routing_channels(self):
     channels = [ch for ch in self.closed_channels if ch['fwd_events'] > 0]
     for ch in channels:
@@ -317,6 +326,7 @@ class LndAssistant:
         ch['other_channels'] = len(
             self.remote_pubkey_to_chan_ids[ch['remote_pubkey']])
     return sorted(channels, key=lambda ch: ch['fwd_events'], reverse=True)
+
 
   def non_direct_peers_with_most_channels(self, rows):
     sorted_pubkeys = sorted(self.node_stats.keys(),
