@@ -1,9 +1,12 @@
 from collections import defaultdict
 from pprint import pprint
+from subprocess import Popen, PIPE
 import json
 import os
 import pickle
+import shlex
 import time
+
 
 def sat_to_btc(satoshi_as_string):
   return int(satoshi_as_string) * 1e-8
@@ -341,3 +344,31 @@ class LndAssistant:
       if len(peers) == rows:
         break
     return peers
+
+  def possible_routes(self, payreq, amt=1, max_routes=10):
+    d = json.loads(os.popen('lncli decodepayreq %s' % (payreq)).read())
+    if int(d['num_satoshis']) == 0:
+      d['num_satoshis'] = amt
+    cmd = 'lncli queryroutes --dest=%s --amt=%s --num_max_routes=%d' % (
+        d['destination'], d['num_satoshis'], max_routes)
+    cmd += ' --final_cltv_delta=144'
+    print(cmd)
+    routes = json.loads(os.popen(cmd).read())['routes']
+    routes_annotated = []
+    for route in routes:
+      first_chan_id = route['hops'][0]['chan_id']
+      ch = self.chan_id_to_channel[first_chan_id]
+      routes_annotated.append({ 'route': route, 'channel': ch })
+    return routes_annotated
+
+  @staticmethod
+  def send_to_routes(payreq, routes_array):
+    d = json.loads(os.popen('lncli decodepayreq %s' % (payreq)).read())
+    routes = {'routes': routes_array}
+    cmd = 'lncli sendtoroute --payment_hash=%s --routes=\'%s\'' % (
+        d['payment_hash'], json.dumps(routes))
+    print(cmd)
+    proc = Popen(shlex.split(cmd), stdout=PIPE, stderr=PIPE)
+    stdout, stderr = proc.communicate()
+    print('stdout:', stdout, 'stderr:', stderr)
+    return (stderr == '') and (json.loads(stdout)['payment_error'] == '')

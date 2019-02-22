@@ -175,3 +175,21 @@ def non_direct_peers_with_most_channels_table(peers):
           peer['pubkey'],
           addr,
           peer['alias']))
+
+def routes_annotated_table(routes_annotated):
+  cprint(' %2s | %16s | %s' % ('', 'route_info', 'first_channel_info'))
+  cprint(' %2s | %4s | %9s | %10s | %9s | %6s | %11s | %s' % ('#', 'hops',
+         'fees_msat', 'capacity', 'opened_by', 'active', 'local_ratio',
+         'remote_alias'))
+  for i in range(len(routes_annotated)):
+    route = routes_annotated[i]['route']
+    ch = routes_annotated[i]['channel']
+    print(' %2d | %4d | %9s | %10s | %9s | %6s | %11.2f | %s' % (
+          i,
+          len(route['hops']),
+          format_satoshi(route['total_fees_msat']),
+          format_satoshi(ch['capacity']),
+          'me' if ch['opened_by_me'] else 'peer',
+          'yes' if ch['active'] else 'no',
+          ch['local_ratio'],
+          ch['remote_alias']))
