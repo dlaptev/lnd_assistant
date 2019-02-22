@@ -20,18 +20,18 @@ def local_ratio_to_fees(local_ratio, args):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(
       description='Set fees inverse proportional to local channel balance.')
-  parser.add_argument('--min_base_fee_msat', type = int, default = 0,
-      help = 'Minimal base fee (absolute fee) in milli-satoshis (default: 0).')
-  parser.add_argument('--max_base_fee_msat', type = int, default = 500,
-      help = 'Maximum base fee in milli-satoshis (default: 500).')
+  parser.add_argument('--min_base_fee_msat', type = int, default = 1,
+      help = 'Minimal base fee (absolute fee) in milli-satoshis (default: 1).')
+  parser.add_argument('--max_base_fee_msat', type = int, default = 1000,
+      help = 'Maximum base fee in milli-satoshis (default: 1000).')
   parser.add_argument('--min_fee_rate', type = float, default = 0.000001,
       help = 'Minimal fee rate (relative fee) (default: 0.000001).')
   parser.add_argument('--max_fee_rate', type = float, default = 0.000005,
       help = 'Maximum fee rate (default: 0.000010).')
   parser.add_argument('--left_cap_local_ratio', type = float, default = 0.0,
       help = 'Keep max fees below this local balance ratio (default: 0.0).')
-  parser.add_argument('--right_cap_local_ratio', type = float, default = 0.6,
-      help = 'Keep min fees above this local balance ratio (default: 0.6).')
+  parser.add_argument('--right_cap_local_ratio', type = float, default = 0.7,
+      help = 'Keep min fees above this local balance ratio (default: 0.7).')
   args = parser.parse_args()
 
   print('    chan_id / local_ratio: base_fee_msat, fee_rate')

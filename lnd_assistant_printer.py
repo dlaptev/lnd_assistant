@@ -43,11 +43,11 @@ def closed_channels_table(channels):
   for ch in channels:
     channel_age = 'unknown'
     if ch['channel_age'] > 0:
-      channel_age = int(ch['channel_age']) / (24 * 60 * 60)
+      channel_age = str(int(ch['channel_age']) / (24 * 60 * 60))
     close_type = ch['close_type'].lower()
     if close_type.endswith('_close'):
       close_type = close_type[:-6]
-    print(' %12s | %12s | %9s | %9s | %10s | %10s | %9d | %10d | %18s | %s' % (
+    print(' %12s | %12s | %9s | %9s | %10s | %10s | %9s | %10d | %18s | %s' % (
           time.strftime('%d %b %H:%M', time.localtime(ch['closed_time'])),
           close_type,
           'me' if ch['opened_by_me'] else 'peer',
