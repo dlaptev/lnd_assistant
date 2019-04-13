@@ -18,7 +18,7 @@
 2. Make sure that `lncli` is unlocked: `lncli unlock`
 3. Run one of the scripts: `python ./lnd_assistant/report.py`
 
-No installation, no dependencies. If you have python - you are good to go.
+No installation, no dependencies, no configuration. If you have python - you are good to go.
 
 ## 1. `report.py`
 You can pass two optional arguments:
