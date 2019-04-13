@@ -72,3 +72,28 @@ Notes.
 ![Select payment route](https://github.com/dlaptev/dlaptev.github.io/blob/master/img/github/lnd_assistant_select_payment_route.png?raw=true "Select payment route example")
 
 ## `set_range_fees.py`
+
+The idea behind this script is to passively balance channels by adjusting fees according to how balanced each channel is. It works like this:
+1. set lower fees for channels where most of the balance is local,
+2. this will result in more payments being routed through this channel,
+3. this is turn will result in a more balanced channel;
+4. for channels that already have low local balance - increase the fees proportionally to the ratio of the local balance;
+5. this will decrease the number of payments that make the channel les balanced.
+
+There are six arguments:
+ * `--min_base_fee_msat`  - minimal base fee (absolute fee) in milli-satoshis (default: 1);
+ * `--max_base_fee_msat` - maximum base fee (absolute fee) in milli-satoshis (default: 1000);
+ * `--min_fee_rate` - minimal fee rate (relative fee) (default: 0.000001);
+ * `--max_fee_rate` - maximum fee rate (relative fee) (default: 0.001000);
+ * `--left_cap_local_ratio` - the channels with local balance ratio below this value will have maximum fees (default: 0.0);
+ * `--right_cap_local_ratio` - the channels with local balance ratio above this value will have minimum fees (default: 0.7).
+
+This will result in the following fees being set per channel:
+ * Channels with local balance ratio below `left_cap_local_ratio` (mostly remote balance) will have `max_base_fee_msat` and `max_fee_rate` fees.
+ * Channels with local balance ratio above `right_cap_local_ratio` (mostly local balance) will have `min_base_fee_msat` and `min_fee_rate` fees.
+ * Channels with local balance ratio between `left_cap_local_ratio` and `right_cap_local_ratio` will have both base fees and fee rate linearly interpolated between the maximum and minimum rates.
+
+
+## Do you have questions or ideas or want to help?
+
+Please feel free to create an issue, submit a pull request, fork and change whatever you want, write to me directly (contact@lightningto.me), or tip via https://tippin.me/@LightningTo_Me.
