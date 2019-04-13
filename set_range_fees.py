@@ -26,8 +26,8 @@ if __name__ == '__main__':
       help = 'Maximum base fee in milli-satoshis (default: 1000).')
   parser.add_argument('--min_fee_rate', type = float, default = 0.000001,
       help = 'Minimal fee rate (relative fee) (default: 0.000001).')
-  parser.add_argument('--max_fee_rate', type = float, default = 0.000005,
-      help = 'Maximum fee rate (default: 0.000010).')
+  parser.add_argument('--max_fee_rate', type = float, default = 0.001000,
+      help = 'Maximum fee rate (default: 0.001000).')
   parser.add_argument('--left_cap_local_ratio', type = float, default = 0.0,
       help = 'Keep max fees below this local balance ratio (default: 0.0).')
   parser.add_argument('--right_cap_local_ratio', type = float, default = 0.7,
