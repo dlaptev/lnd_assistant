@@ -14,11 +14,13 @@
    2. this will encourage channels to be used in the direction that balances them.
 
 ## 0. Usage
+If you have `python`, `lncli` and `bitcoin-cli` all on one machine - you are good to go.
+
 1. Download the repository: `git clone https://github.com/dlaptev/lnd_assistant`
 2. Make sure that `lncli` is unlocked: `lncli unlock`
 3. Run one of the scripts: `python ./lnd_assistant/report.py`
 
-No installation, no dependencies, no configuration. If you have python - you are good to go.
+The scripts are designed to be as simple to use as possible: no installation, no dependencies, no configuration. But it only works for the most popular setup: `lnd` + `bitcoind` on one machine. If you have remote `bitcoind` - you will need to install local `bictoin-cli` and point it to the remote backend. If you have differend backend (such as `btcd`) - you will need to modify the code (it is very simple though).
 
 ## 1. `report.py`
 You can pass two optional arguments:
